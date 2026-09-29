@@ -28,3 +28,23 @@ library components intended to be composed by an embedding application.
 ## Main packages
 
 `marine`, `cranes`, `yard`, `gate`, `customs`, `reefer`, `hazmat`, `equipment`, `rail`, `billing`, `transshipment`, `planning`, `persistence`, `reporting`, and `api`.
+
+### Chained port-entry plans
+
+`marine.entry_plan.PortEntryPlanner` composes the standalone tide, weather,
+channel, pilotage, tug and berth judgements into one queryable entry plan:
+
+- `submit(EntryRequest)` searches the requested entry window on a fixed grid and
+  returns the earliest slot that clears every check, or a blocked decision with
+  the full list of `DenyReason` codes;
+- the gate **fails closed** — a missing tide curve for any channel leg, a
+  weather forecast that does not cover the transit (or a sample gap beyond the
+  configured cadence), or an absent roster/fleet/berth/route dataset blocks the
+  vessel just like a violated limit;
+- `replan_unconfirmed(at)` reruns the search after a forecast or resource
+  change, touching only `proposed` plans. `confirmed` and `executed` records are
+  immutable and still reserve their pilot, tugs and berth space;
+- every rejection, postponement, confirmation and execution is appended to the
+  plan history with its reasons, the prior slot and the revision;
+- `confirm` revalidates the slot before freezing it, `execute` follows
+  confirmation, and `explain` dry-runs a single candidate without mutating state.
