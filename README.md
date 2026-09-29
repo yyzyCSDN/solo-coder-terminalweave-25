@@ -16,6 +16,22 @@ Run the small HTTP adapter with `terminalweave serve`. It exposes `GET /health`,
 `POST /tide/clearance`, and `POST /billing/demurrage`. The other packages are
 library components intended to be composed by an embedding application.
 
+## Arrival planning
+
+`marine.arrival` chains the otherwise independent tide, weather, channel,
+pilotage, tug and berth judgments into queryable arrival plans
+(`terminalweave arrivals` runs a worked scenario):
+
+- every gate must pass and all required information must be present — any
+  missing forecast or failed safety gate keeps the call un-released and the
+  plan records a structured `GateFinding` reason per gate;
+- `update_forecast` (new revision) and `resource_changed` (roster, fleet or
+  berth-closure change) only recompute *unconfirmed* plans; confirmed and
+  executed records, their windows and their history stay untouched;
+- each rejection and reschedule in the returned `ReplanReport` carries the
+  gate findings (e.g. `tide/insufficient_ukc`, `pilot/no_qualified_pilot`,
+  `tug/requirement_unmet`, `berth/no_berth`) that explain the decision.
+
 ## Design principles
 
 - domain calculations are deterministic for identical inputs;

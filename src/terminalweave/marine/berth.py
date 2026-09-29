@@ -92,16 +92,24 @@ class BerthPlanner:
         candidate = BerthAssignment(self.berth.berth_id, vessel.call_id, vessel.interval, start_m, start_m + required, self.safety_margin_m)
         return all((not candidate.conflicts(existing) for existing in self._assignments))
 
-    def assign(self, vessel: VesselCall) -> BerthAssignment:
+    def first_fit_position(self, vessel: VesselCall) -> float | None:
         if vessel.draft_m > self.berth.max_draft_m:
-            raise ConflictError('vessel draft exceeds berth limit')
+            return None
         for start in self._candidate_positions(vessel):
             if self.can_place(vessel, start):
-                required = self._required_length(vessel)
-                assignment = BerthAssignment(self.berth.berth_id, vessel.call_id, vessel.interval, start, start + required, self.safety_margin_m)
-                self._assignments.append(assignment)
-                return assignment
-        raise ConflictError('no conflict-free berth position is available')
+                return start
+        return None
+
+    def assign(self, vessel: VesselCall) -> BerthAssignment:
+        start = self.first_fit_position(vessel)
+        if start is None:
+            if vessel.draft_m > self.berth.max_draft_m:
+                raise ConflictError('vessel draft exceeds berth limit')
+            raise ConflictError('no conflict-free berth position is available')
+        required = self._required_length(vessel)
+        assignment = BerthAssignment(self.berth.berth_id, vessel.call_id, vessel.interval, start, start + required, self.safety_margin_m)
+        self._assignments.append(assignment)
+        return assignment
 
     def unassign(self, call_id: str) -> bool:
         before = len(self._assignments)
